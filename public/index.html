@@ -17,11 +17,10 @@
   </header>
   <main class="shell">
     <p class="notice" id="notice" role="status" hidden></p>
-    <button id="retry" class="quiet" type="button" hidden>Retry loading</button>
     <section id="welcome" class="welcome" aria-labelledby="welcome-title">
       <div class="ticket">
         <div class="ticket-copy">
-          <p class="ticket-label">Shared trip ledger</p>
+          <p class="ticket-label">Trip expense ledger</p>
           <h1 id="welcome-title">The trip tab.</h1>
           <p>Pick your name to see your expenses and settle up with friends.</p>
         </div>
@@ -36,6 +35,7 @@
       <div class="name-picker">
         <div class="section-heading"><h2>Choose your name</h2><span class="meta">9 travelers</span></div>
         <div id="names" class="names"></div>
+        <p class="hint allocation">Changes are saved in this browser.</p>
       </div>
     </section>
     <div id="dashboard" hidden>
@@ -43,6 +43,7 @@
         <div><p class="context">Trip ledger</p><h1 id="heading" tabindex="-1"></h1></div>
         <button class="primary" id="add" type="button">+ Add expense</button>
       </section>
+      <p class="hint allocation">Changes are saved in this browser.</p>
       <div class="totals">
         <div class="total outgoing"><span><i aria-hidden="true">↗</i> You owe</span><strong id="owe"></strong></div>
         <div class="total incoming"><span><i aria-hidden="true">↙</i> You’re owed</span><strong id="receive"></strong></div>

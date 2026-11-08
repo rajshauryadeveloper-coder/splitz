@@ -52,3 +52,41 @@ export function balances(expenses, payments = []) {
     return [];
   });
 }
+
+// The starting ledger is public and ships with the site.
+export const startingLedger = { revision: null, expenses: [], payments: [] };
+
+export function updateLedger(current, body) {
+  const data = structuredClone(current);
+  if (body.revision !== data.revision) throw new Error('This ledger changed in another tab. Reopen the form and try again.');
+  const { action, id } = body;
+
+  if (action === 'expense') {
+    if (!validateExpense(body.expense)) throw new Error('Payments and shares must each add up to the bill total.');
+    const { title, total, paid, shares } = body.expense;
+    const index = data.expenses.findIndex(expense => expense.id === id);
+    if (id != null && index < 0) throw new Error('This bill was removed.');
+    const expense = { id: id ?? crypto.randomUUID(), title: title.trim(), total, paid, shares };
+    if (index < 0) data.expenses.unshift(expense);
+    else data.expenses[index] = expense;
+  } else if (action === 'delete') {
+    if (!data.expenses.some(expense => expense.id === id)) throw new Error('This bill was removed.');
+    data.expenses = data.expenses.filter(expense => expense.id !== id);
+  } else if (action === 'settle') {
+    const payment = balances(data.expenses, data.payments).find(item =>
+      item.from === body.from && item.to === body.to);
+    if (!payment) throw new Error('This ledger changed in another tab. Reopen the form and try again.');
+    if (!Number.isSafeInteger(body.amount) || body.amount < 1 || body.amount > payment.amount) {
+      throw new Error('Enter an amount between ₹0.01 and the outstanding balance.');
+    }
+    data.payments.unshift({ ...payment, amount: body.amount, id: crypto.randomUUID(), date: new Date().toISOString() });
+  } else if (action === 'undo') {
+    if (!data.payments.some(payment => payment.id === id)) throw new Error('This payment was removed.');
+    data.payments = data.payments.filter(payment => payment.id !== id);
+  } else {
+    throw new Error('Unknown action.');
+  }
+
+  data.revision = crypto.randomUUID();
+  return data;
+}

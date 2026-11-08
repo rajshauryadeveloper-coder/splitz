@@ -87,7 +87,6 @@ button:hover { background: #eaf2f8; }
 .breakdown p { padding-block: 4px; color: var(--muted); overflow-wrap: anywhere; }
 .breakdown strong { color: var(--ink); }
 .notice, .error { background: #fff1f3; color: #8e2435; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; }
-#retry { margin-bottom: 14px; }
 dialog { padding: 0; border: 1px solid var(--border); border-radius: 15px; width: min(100% - 24px, 580px); max-height: calc(100dvh - 24px); color: inherit; background: var(--paper); }
 #payment-editor { max-width: 440px; }
 dialog::backdrop { background: #142d43a0; }

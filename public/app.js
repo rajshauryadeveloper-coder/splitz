@@ -1,4 +1,4 @@
-import { balances, equalShares, people, validateExpense } from './ledger.js';
+import { balances, equalShares, people, startingLedger, updateLedger, validateExpense } from './ledger.js';
 
 const $ = id => document.getElementById(id);
 const money = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
@@ -8,8 +8,7 @@ let ledger;
 let selected = '';
 let editing;
 let payment;
-let loading;
-let busy = false;
+const storageKey = 'splitz-ledger-v1';
 
 function node(tag, text, className) {
   const element = document.createElement(tag);
@@ -50,7 +49,7 @@ function render() {
   $('dashboard').hidden = !selected;
   if (!selected) return;
   $('heading').textContent = selected + '’s trip';
-  $('add').disabled = !ledger || busy;
+  $('add').disabled = !ledger;
   const relevant = item => item.from === selected || item.to === selected;
   const open = ledger ? balances(ledger.expenses, ledger.payments).filter(relevant) : [];
   for (const [id, key] of [['owe', 'from'], ['receive', 'to']]) {
@@ -61,7 +60,7 @@ function render() {
     const title = item.from === selected ? 'Pay ' + item.to : 'Receive from ' + item.from;
     return row(title, '', item.amount,
       button('Record payment', () => openPayment(item)));
-  }), ledger ? 'You’re all settled up.' : 'Waiting for the trip ledger…');
+  }), ledger ? 'You’re all settled up.' : 'Browser ledger unavailable.');
   const expenses = ledger?.expenses.filter(item =>
     $('all').checked || item.paid[selected] || item.shares[selected]) ?? [];
   list('expenses', expenses.map(item => {
@@ -84,7 +83,7 @@ function render() {
     bill.append(row(item.title, detail, item.total, edit), breakdown);
     return bill;
   }), ledger ? ($('all').checked ? 'No trip expenses yet. Add an expense to get started.'
-    : 'No expenses for ' + selected + ' yet. Add one or view all trip expenses.') : 'Waiting for the trip ledger…');
+    : 'No expenses for ' + selected + ' yet. Add one or view all trip expenses.') : 'Browser ledger unavailable.');
   const history = ledger?.payments.filter(relevant) ?? [];
   $('history-section').hidden = !history.length;
   list('history', history.map(item => row(item.from + ' → ' + item.to,
@@ -94,76 +93,50 @@ function render() {
     }))), '');
 }
 
-async function request(body) {
-  const response = await fetch('/api/ledger', body ? {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  } : { cache: 'no-store' });
-  const data = await response.json();
-  if (!response.ok) throw Object.assign(new Error(data.error), { status: response.status });
-  return data;
+function readLedger() {
+  const saved = localStorage.getItem(storageKey);
+  return saved === null ? startingLedger : JSON.parse(saved);
 }
 
 function refresh() {
-  if (loading || busy) return loading;
-  const previous = ledger;
-  loading = request().then(next => {
-    if (ledger !== previous || busy) return;
-    if (!ledger || next.revision !== ledger.revision) {
-      ledger = next;
+  try {
+    const current = readLedger();
+    if (!ledger || ledger.revision !== current.revision) {
+      ledger = current;
       render();
     }
-    if (!$('retry').hidden) message('notice');
-    $('retry').hidden = true;
-  }).catch(() => {
-    message('notice', 'Could not load the shared ledger.');
-    $('retry').hidden = false;
-  }).finally(() => { loading = undefined; });
-  return loading;
-}
-
-async function mutate(change, form) {
-  if (busy || !ledger) return;
-  const target = form ? form.error : 'notice';
-  message(target);
-  busy = true;
-  const controls = ['save', 'remove', 'payment-save', 'add'].map($);
-  for (const control of controls) control.disabled = true;
-  let saved = false;
-  try {
-    ledger = await request({ ...change, revision: form ? form.revision : ledger.revision });
-    if (form) $(form.dialog).close();
-    message('notice');
-    $('retry').hidden = true;
-    saved = true;
-  } catch (error) {
-    message(target, error.status ? error.message : 'Could not save. Reload the ledger and check whether the change was recorded.');
-    if (error.status === 409) {
-      try {
-        ledger = await request();
-        if (form) {
-          message(target, 'The ledger changed. Close and reopen this form to review the latest amounts.');
-          form.stale = true;
-        }
-      } catch {
-        message(target, 'Could not reload the ledger. Refresh the page and try again.');
-      }
-    }
-  } finally {
-    busy = false;
-    for (const control of controls) control.disabled = false;
-    render();
-    if (form?.stale) {
-      if (form.dialog === 'editor') $('save').disabled = $('remove').disabled = true;
-      else $('payment-save').disabled = true;
-    }
-    if (saved && selected) $(change.action === 'settle' || change.action === 'undo' ? 'settle-title' : 'bills-title').focus();
+  } catch {
+    message('notice', 'Could not open the ledger saved in this browser.');
   }
 }
 
+function mutate(change, form) {
+  if (!ledger) return;
+  const target = form ? form.error : 'notice';
+  let next;
+  try {
+    const current = readLedger();
+    next = updateLedger(current, { ...change, revision: form ? form.revision : ledger.revision });
+  } catch (error) {
+    message(target, error.message);
+    refresh();
+    return;
+  }
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(next));
+  } catch {
+    message(target, 'Could not save to this browser. Check whether browser storage is available.');
+    return;
+  }
+  ledger = next;
+  if (form) $(form.dialog).close();
+  message('notice');
+  render();
+  if (selected) $(change.action === 'settle' || change.action === 'undo' ? 'settle-title' : 'bills-title').focus();
+}
+
 function openPayment(item) {
-  if (busy) return;
+  if (!ledger) return;
   payment = { ...item, revision: ledger.revision, dialog: 'payment-editor', error: 'payment-error' };
   $('payment-detail').textContent = item.from + ' owes ' + item.to + ' ' + format(item.amount) + '.';
   $('payment-amount').value = decimal(item.amount);
@@ -248,7 +221,7 @@ function setFields(fields, amounts) {
 }
 
 function openEditor(expense) {
-  if (busy || !ledger) return;
+  if (!ledger) return;
   editing = { id: expense?.id, revision: ledger.revision, dialog: 'editor', error: 'form-error' };
   $('save').disabled = $('remove').disabled = false;
   $('editor-title').textContent = expense ? 'Edit expense' : 'Add expense';
@@ -276,14 +249,10 @@ function entered(fields) {
 }
 
 $('add').addEventListener('click', () => openEditor());
-$('close').addEventListener('click', () => { if (!busy) $('editor').close(); });
-for (const id of ['editor', 'payment-editor']) {
-  $(id).addEventListener('cancel', event => { if (busy) event.preventDefault(); });
-}
-$('payment-close').addEventListener('click', () => { if (!busy) $('payment-editor').close(); });
+$('close').addEventListener('click', () => { $('editor').close(); });
+$('payment-close').addEventListener('click', () => { $('payment-editor').close(); });
 $('payment-form').addEventListener('submit', event => {
   event.preventDefault();
-  if (payment.stale) return;
   const amount = parseMoney($('payment-amount').value);
   if (!(amount > 0 && amount <= payment.amount)) {
     return message('payment-error', 'Enter an amount between ₹0.01 and ' + format(payment.amount) + '.');
@@ -300,13 +269,12 @@ $('everyone').addEventListener('click', () => {
   syncFields();
 });
 $('remove').addEventListener('click', () => {
-  if (!editing.stale && confirm('Delete this expense? Recorded payments will remain in the ledger.')) {
+  if (confirm('Delete this expense? Recorded payments will remain in the ledger.')) {
     mutate({ action: 'delete', id: editing.id }, editing);
   }
 });
 $('expense-form').addEventListener('submit', event => {
   event.preventDefault();
-  if (editing.stale) return;
   const title = $('title').value.trim();
   const total = parseMoney($('amount').value);
   const paidBy = checked(payers);
@@ -325,8 +293,7 @@ $('expense-form').addEventListener('submit', event => {
   mutate({ action: 'expense', id: editing.id, expense }, editing);
 });
 
-$('retry').addEventListener('click', refresh);
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && !document.querySelector('dialog[open]')) refresh();
+window.addEventListener('storage', event => {
+  if (event.key === storageKey || event.key === null) refresh();
 });
 refresh();
