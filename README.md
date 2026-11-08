@@ -9,7 +9,7 @@ With Node.js 24, run `npm run dev` and open http://127.0.0.1:3000. The app creat
 ## Deploy to Vercel
 
 1. Import this project into Vercel and keep the framework preset set to Other.
-2. Create a **private Vercel Blob** store and connect it to the project so Vercel provides `BLOB_READ_WRITE_TOKEN` to the deployment.
+2. In the project’s **Storage** tab, create or connect a **private Vercel Blob** store. Connect it to **Production**. Vercel provides `BLOB_STORE_ID` for OIDC authentication or `BLOB_READ_WRITE_TOKEN` for a legacy connection.
 3. Deploy or redeploy, then share the URL. Vercel stores the shared JSON file at `splitz/ledger.json` in the connected store. Use a separate store for any preview deployment that needs its own ledger.
 
 Anyone with the URL can read and change the shared ledger. Name selection changes the view.
