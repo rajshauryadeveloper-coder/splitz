@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f2f6f8">
+  <title>Splitz — Trip expenses</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="shell topbar">
+      <a class="brand" href="/" aria-label="Splitz home"><span class="mark" aria-hidden="true">÷</span> Splitz</a>
+      <label class="identity"><span>Viewing as</span><select id="person" aria-label="Viewing as"><option value="">Choose your name</option></select></label>
+    </div>
+  </header>
+  <main class="shell">
+    <p class="notice" id="notice" role="status" hidden></p>
+    <button id="retry" class="quiet" type="button" hidden>Retry loading</button>
+    <section id="welcome" class="welcome" aria-labelledby="welcome-title">
+      <div class="ticket">
+        <div class="ticket-copy">
+          <p class="ticket-label">Shared trip ledger</p>
+          <h1 id="welcome-title">The trip tab.</h1>
+          <p>Pick your name to see your expenses and settle up with friends.</p>
+        </div>
+        <svg class="route" viewBox="0 0 310 190" aria-hidden="true" fill="none">
+          <path d="M14 149c45-12 61-59 106-57 54 2 16 78 65 65 38-10 7-66 72-112" stroke="#a7d8ea" stroke-width="2" stroke-dasharray="4 8" stroke-linecap="round"/>
+          <circle cx="15" cy="149" r="7" fill="#bce8f5"/>
+          <g transform="translate(241 27) rotate(25 20 20)">
+            <path d="M21 1c3 0 4 4 4 8v9l16 9v5l-16-5v9l5 4v3l-9-2-9 2v-3l5-4v-9L1 32v-5l16-9V9c0-4 1-8 4-8Z" fill="#d5f1fa"/>
+          </g>
+        </svg>
+      </div>
+      <div class="name-picker">
+        <div class="section-heading"><h2>Choose your name</h2><span class="meta">9 travelers</span></div>
+        <div id="names" class="names"></div>
+      </div>
+    </section>
+    <div id="dashboard" hidden>
+      <section class="intro">
+        <div><p class="context">Trip ledger</p><h1 id="heading" tabindex="-1"></h1></div>
+        <button class="primary" id="add" type="button">+ Add expense</button>
+      </section>
+      <div class="totals">
+        <div class="total outgoing"><span><i aria-hidden="true">↗</i> You owe</span><strong id="owe"></strong></div>
+        <div class="total incoming"><span><i aria-hidden="true">↙</i> You’re owed</span><strong id="receive"></strong></div>
+      </div>
+      <section class="section" aria-labelledby="settle-title">
+        <h2 id="settle-title" tabindex="-1">Settle up</h2>
+        <div id="settlements" class="panel"></div>
+      </section>
+      <section class="section" aria-labelledby="bills-title">
+        <div class="section-heading"><h2 id="bills-title" tabindex="-1">Expenses</h2><label class="scope"><input type="checkbox" id="all"> All trip expenses</label></div>
+        <div id="expenses" class="panel"></div>
+      </section>
+      <section class="section" id="history-section" aria-labelledby="history-title" hidden>
+        <h2 id="history-title">Completed payments</h2>
+        <div id="history" class="panel"></div>
+      </section>
+    </div>
+  </main>
+  <dialog id="editor" aria-labelledby="editor-title">
+    <form id="expense-form">
+      <div class="dialog-heading"><h2 id="editor-title"></h2><button type="button" class="quiet close" id="close" aria-label="Close">×</button></div>
+      <div class="dialog-body">
+        <div class="fields">
+          <label>What was it for?<input id="title" required maxlength="100" placeholder="e.g. Dinner" autofocus></label>
+          <label>Total (₹)<input id="amount" required inputmode="decimal" placeholder="0.00"></label>
+        </div>
+        <fieldset><legend>Who paid?</legend><p class="hint">Select everyone who paid toward the bill.</p><div id="payers" class="people-fields"></div><p class="hint allocation" id="payer-hint"></p></fieldset>
+        <fieldset>
+          <legend>Split between</legend>
+          <div class="split-controls"><label><input id="equal" type="checkbox" checked> Split equally</label><button type="button" class="quiet" id="everyone">Select everyone</button></div>
+          <div id="contributors" class="people-fields"></div>
+          <p class="hint allocation" id="share-hint"></p>
+        </fieldset>
+        <p id="form-error" class="error" role="alert" hidden></p>
+      </div>
+      <div class="dialog-footer"><button type="button" id="remove" class="danger" hidden>Delete expense</button><button type="submit" class="primary" id="save">Save expense</button></div>
+    </form>
+  </dialog>
+  <dialog id="payment-editor" aria-labelledby="payment-title">
+    <form id="payment-form">
+      <div class="dialog-heading"><h2 id="payment-title">Record payment</h2><button type="button" class="quiet close" id="payment-close" aria-label="Close">×</button></div>
+      <div class="dialog-body">
+        <p id="payment-detail"></p>
+        <label class="payment-amount">Amount paid (₹)<input id="payment-amount" required inputmode="decimal" autofocus></label>
+        <p id="payment-error" class="error" role="alert" hidden></p>
+      </div>
+      <div class="dialog-footer"><button type="submit" class="primary" id="payment-save">Record payment</button></div>
+    </form>
+  </dialog>
+</body>
+</html>
